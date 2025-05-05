@@ -1,0 +1,317 @@
+openapi: 3.0.0
+info:
+  title: RallyTabs API
+  description: |
+    API for accessing MLB game schedules and ticket information for RallyTabs.
+    
+    ## Authentication
+    All API requests require an API key to be passed in the `x-api-key` header.
+    
+    ## Rate Limiting
+    - Schedule endpoints: 1000 requests per 15 minutes
+    - Ticket endpoints: 200 requests per 15 minutes
+    - Default rate limit: 100 requests per 15 minutes
+    
+    Rate limit information is included in the response headers:
+    - `RateLimit-Limit`: Maximum requests allowed in the window
+    - `RateLimit-Remaining`: Remaining requests in the current window
+    - `RateLimit-Reset`: Time when the rate limit window resets
+  version: 1.0.0
+  contact:
+    name: RallyTabs Support
+    email: support@twlvgaming.com
+
+servers:
+  - url: https://api.twlvgaming.com
+    description: Production server
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for authentication
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Additional error details (if available)
+      example:
+        error: "Internal Server Error"
+        details: "Database connection failed"
+
+    MLBSchedule:
+      type: object
+      properties:
+        game_id:
+          type: string
+          description: Unique identifier for the game
+        game_date:
+          type: string
+          description: Date of the game (MM/DD format)
+        game_datetime:
+          type: string
+          format: date-time
+          description: Date and time of the game
+        away_name:
+          type: string
+          description: Name of the away team
+        home_name:
+          type: string
+          description: Name of the home team
+        venue_name:
+          type: string
+          description: Name of the venue
+      example:
+        game_id: "778764"
+        game_date: "3/12"
+        game_datetime: "2025-03-12T19:10:00Z"
+        away_name: "Minnesota Twins"
+        home_name: "Boston Red Sox"
+        venue_name: "Fenway Park"
+
+    Ticket:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+          description: Unique identifier for the ticket
+        game_id:
+          type: string
+          description: Unique identifier for the game
+        game_date:
+          type: string
+          description: Date of the game (MM/DD format)
+        game_status:
+          type: string
+          description: Current status of the game
+        inning_state:
+          type: string
+          description: Current inning state
+        current_inning:
+          type: integer
+          description: Current inning number
+        away_team:
+          type: string
+          description: Name of the away team
+        home_team:
+          type: string
+          description: Name of the home team
+        away_runs:
+          type: integer
+          description: Number of runs scored by away team
+        home_runs:
+          type: integer
+          description: Number of runs scored by home team
+        total_strikeouts:
+          type: integer
+          description: Total number of strikeouts in the game
+        ticket_home_score_range:
+          type: string
+          description: Predicted home team score range
+        ticket_away_score_range:
+          type: string
+          description: Predicted away team score range
+        ticket_strikeout_range:
+          type: string
+          description: Predicted strikeout range
+        rally_tab_payout_amount:
+          type: number
+          description: Payout amount for the ticket
+        ticket_status:
+          type: string
+          description: Current status of the ticket
+        game_outcome_status:
+          type: string
+          description: Outcome status of the game
+        away_score_match:
+          type: string
+          description: Whether away score prediction matched
+        home_score_match:
+          type: string
+          description: Whether home score prediction matched
+        strikeout_match:
+          type: string
+          description: Whether strikeout prediction matched
+        is_added:
+          type: boolean
+          description: Whether the ticket has been added to the system
+      example:
+        ticket_id: "10111874"
+        game_id: "778764"
+        game_date: "3/12"
+        game_status: "Final"
+        inning_state: "Bottom"
+        current_inning: 9
+        away_team: "Minnesota Twins"
+        home_team: "Boston Red Sox"
+        away_runs: 5
+        home_runs: 6
+        total_strikeouts: 27
+        ticket_home_score_range: "6-7"
+        ticket_away_score_range: "3-5"
+        ticket_strikeout_range: "20+"
+        rally_tab_payout_amount: 50
+        ticket_status: "REDEEMED"
+        game_outcome_status: "WINNER"
+        away_score_match: "MATCH"
+        home_score_match: "MATCH"
+        strikeout_match: "MATCH"
+        is_added: true
+
+paths:
+  /api/v1/mlb/schedule:
+    get:
+      summary: Get MLB Schedule
+      description: Retrieve the MLB game schedule
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MLBSchedule'
+              example:
+                - game_id: "778764"
+                  game_date: "3/12"
+                  game_datetime: "2025-03-12T19:10:00Z"
+                  away_name: "Minnesota Twins"
+                  home_name: "Boston Red Sox"
+                  venue_name: "Fenway Park"
+                - game_id: "778765"
+                  game_date: "3/12"
+                  game_datetime: "2025-03-12T20:05:00Z"
+                  away_name: "New York Yankees"
+                  home_name: "Toronto Blue Jays"
+                  venue_name: "Rogers Centre"
+        '401':
+          description: Unauthorized - Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unauthorized"
+                details: "Invalid or missing API key"
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Too Many Requests"
+                details: "Rate limit exceeded. Please try again later."
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Internal Server Error"
+                details: "An unexpected error occurred"
+
+  /api/v1/tickets/check:
+    get:
+      summary: Check Ticket Status
+      description: Retrieve information about a specific ticket
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: ticket_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID of the ticket to check
+          example: "10111874"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    $ref: '#/components/schemas/Ticket'
+              example:
+                ticket:
+                  ticket_id: "10111874"
+                  game_id: "778764"
+                  game_date: "3/12"
+                  game_status: "Final"
+                  inning_state: "Bottom"
+                  current_inning: 9
+                  away_team: "Minnesota Twins"
+                  home_team: "Boston Red Sox"
+                  away_runs: 5
+                  home_runs: 6
+                  total_strikeouts: 27
+                  ticket_home_score_range: "6-7"
+                  ticket_away_score_range: "3-5"
+                  ticket_strikeout_range: "20+"
+                  rally_tab_payout_amount: 50
+                  ticket_status: "REDEEMED"
+                  game_outcome_status: "WINNER"
+                  away_score_match: "MATCH"
+                  home_score_match: "MATCH"
+                  strikeout_match: "MATCH"
+                  is_added: true
+        '400':
+          description: Bad Request - Missing or invalid ticket_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Bad Request"
+                details: "Missing required parameter: ticket_id"
+        '401':
+          description: Unauthorized - Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unauthorized"
+                details: "Invalid or missing API key"
+        '404':
+          description: Not Found - Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Not Found"
+                details: "Ticket not found with ID: 99999999"
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Too Many Requests"
+                details: "Rate limit exceeded. Please try again later."
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Internal Server Error"
+                details: "An unexpected error occurred" 
